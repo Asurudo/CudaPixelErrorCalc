@@ -66,15 +66,4 @@ max_value：表示数据的最大值，对应颜色映射的终点。
 
 
 
-<b><font size = "4"> [<<Back to Research](https://asurudo.top/s/uF3auEjD7)
-</font>
-</b>
-----
-
-
-<center><strong> 
- 📞(+86)13151256726 | (+81)9099606726 
-<br>📧asurudo@126.com | asurudojyo@gmail.com 
-</strong></center>
-
-<center><strong>Copyright © 2023 Asurudo Jyo. All rights reserved. </strong></center>
+<center><strong>Copyright © 2023 Asurudo Jyo. All rights reserved. </strong></center
