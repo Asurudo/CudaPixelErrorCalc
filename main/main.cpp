@@ -5,10 +5,11 @@
 
 #include "CPEC.h"
 
-#define TEST_MODE false
+#define TEST_MODE true
 
 using namespace std;
 
+#if !TEST_MODE
 int main(int argc, char** argv){
     if( argc < 5 ) {
 		std::cout << "Usage: ./cpec.exe [reference_filename] [target_filename] [diffval|diffimg] [method] [cpu|gpu]" << std::endl;
@@ -41,16 +42,19 @@ int main(int argc, char** argv){
     }
     return 0;
 }
+#endif
 
 #if TEST_MODE
 int main() {
-    string input1Path = "./img3.png";
-    string input2Path = "./img4.png";
+    string input1Path = "./big.jpg";
+    string input2Path = "./big2.jpg";
     string method = "SSIM";
     //string outputPath = "./1.jpg";
 
     std::unique_ptr<cpec::cpecImg> imgPtr1 = cpec::loadImage(input1Path);
     std::unique_ptr<cpec::cpecImg> imgPtr2 = cpec::loadImage(input2Path);
+
+    cout << "Image: " << imgPtr1->width << " " << imgPtr1->height << endl;
     
     //cpec::saveImage(imgPtr, outputPath);
 
@@ -73,13 +77,13 @@ int main() {
     // 计算时间差并输出
     std::chrono::duration<double> elapsed_cpu = cpu_end - cpu_start;
     std::cout << "CPU Elapsed time: " << elapsed_cpu.count() << " seconds" << std::endl;
-    printf("CPU error: %.8f\n", cpu_error);
+    printf("%s CPU error: %.8f\n", method.c_str(), cpu_error);
 
     // 计算时间差并输出
     std::chrono::duration<double> elapsed_gpu = gpu_end - gpu_start;
     std::cout << "GPU Elapsed time: " << elapsed_gpu.count() << " seconds" << std::endl;
-    printf("GPU error: %.8f\n", gpu_error);
-    cpec::diffImgOutput(imgPtr1, imgPtr2, "./output.png");
+    printf("%s GPU error: %.8f\n", method.c_str(), gpu_error);
+    //cpec::diffImgOutput(imgPtr1, imgPtr2, "./output.png");
     //cout << "MSE: " << error << endl;
     system("pause");
     return 0;

@@ -14,31 +14,28 @@
 #include "pseudocolor.hpp"
 
 namespace cpecInter{
-    #if !defined (__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
-    #else
-    __device__ double atomicAdd(double* address, double val)
-    {
-        unsigned long long int* address_as_ull =
-                                  (unsigned long long int*)address;
-        unsigned long long int old = *address_as_ull, assumed;
-
-        do {
-            assumed = old;
-            old = atomicCAS(address_as_ull, assumed,
-                            __double_as_longlong(val +
-                                  __longlong_as_double(assumed)));
-
-        // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
-        } while (assumed != old);
-
-        return __longlong_as_double(old);
-    }
-    #endif
+//    #if !defined (__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
+//    #else
+//     __device__ double atomicAdd(double* address, double val)
+//     {
+//         unsigned long long int* address_as_ull =
+//                                   (unsigned long long int*)address;
+//         unsigned long long int old = *address_as_ull, assumed;
+//         do {
+//             assumed = old;
+//             old = atomicCAS(address_as_ull, assumed,
+//                             __double_as_longlong(val +
+//                                   __longlong_as_double(assumed)));
+//         // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
+//         } while (assumed != old);
+//         return __longlong_as_double(old);
+//     }
+//    #endif
 
 
     __global__ void gpu_diffValCalMSE_kernel(
       const cpec::col4 *img1_data, const cpec::col4 *img2_data,
-      int width, int height, double *mse_result) {
+      int width, int height, float *mse_result) {
 
       // 获取线程的 x 和 y 坐标
       int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -53,14 +50,14 @@ namespace cpecInter{
           const cpec::col4 &p2 = img2_data[offset];
 
           // 计算每个通道的平方误差
-          double mse = (pow(p1.r - p2.r, 2) + pow(p1.g - p2.g, 2) + pow(p1.b - p2.b, 2));
+          float mse = (pow(p1.r - p2.r, 2) + pow(p1.g - p2.g, 2) + pow(p1.b - p2.b, 2));
 
           // 使用原子操作将每个线程计算的 MSE 累加到结果中
           atomicAdd(mse_result, mse);
       }
     }
 
-    double gpu_diffValCalMSE(const std::unique_ptr<cpec::cpecImg>& img1, const std::unique_ptr<cpec::cpecImg>& img2){
+    float gpu_diffValCalMSE(const std::unique_ptr<cpec::cpecImg>& img1, const std::unique_ptr<cpec::cpecImg>& img2){
       if (img1->width != img2->width || img1->height != img2->height) {
           std::cerr << "Image dimensions do not match!" << std::endl;
           return -1.0f;
@@ -68,14 +65,14 @@ namespace cpecInter{
 
       // 在设备上分配内存
       cpec::col4 *d_img1, *d_img2;
-      double *d_mse_result;
+      float *d_mse_result;
       cudaMalloc((void**)&d_img1, img1->width * img1->height * sizeof(cpec::col4));
       cudaMalloc((void**)&d_img2, img1->width * img1->height * sizeof(cpec::col4));
-      cudaMalloc((void**)&d_mse_result, sizeof(double));
+      cudaMalloc((void**)&d_mse_result, sizeof(float));
 
       // 初始化 MSE 结果
-      double MSE = 0.0f;
-      cudaMemcpy(d_mse_result, &MSE, sizeof(double), cudaMemcpyHostToDevice);
+      float MSE = 0.0f;
+      cudaMemcpy(d_mse_result, &MSE, sizeof(float), cudaMemcpyHostToDevice);
 
       // 将图像数据从主机传输到设备
       cudaMemcpy(d_img1, img1->data.get(), img1->width * img1->height * sizeof(cpec::col4), cudaMemcpyHostToDevice);
@@ -90,7 +87,7 @@ namespace cpecInter{
       gpu_diffValCalMSE_kernel<<<blocks, threads>>>(d_img1, d_img2, img1->width, img1->height, d_mse_result);
 
       // 将 MSE 从设备复制到主机
-      cudaMemcpy(&MSE, d_mse_result, sizeof(double), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&MSE, d_mse_result, sizeof(float), cudaMemcpyDeviceToHost);
 
       // 释放设备内存
       cudaFree(d_img1);
@@ -99,13 +96,13 @@ namespace cpecInter{
 
       return MSE / (3.0 * img1->width * img1->height);  // 除以总像素数得到最终的 MSE
     }
-    double cpu_diffValCalMSE(const std::unique_ptr<cpec::cpecImg>& img1, const std::unique_ptr<cpec::cpecImg>& img2){
+    float cpu_diffValCalMSE(const std::unique_ptr<cpec::cpecImg>& img1, const std::unique_ptr<cpec::cpecImg>& img2){
       if (img1->width != img2->width || img1->height != img2->height) {
           std::cerr << "Image dimensions do not match!" << std::endl;
           return -1.0f;
       }
 
-      double MSE = 0.0f;
+      float MSE = 0.0f;
       for (int y = 0; y < img1->height; ++y) {
           for (int x = 0; x < img1->width; ++x) {
               const cpec::col4& p1 = (*img1)(x, y);
@@ -188,7 +185,7 @@ namespace cpecInter{
         double ssim = (2.0 * mu0 * mu1 + c1) * (2.0 * sigma01 + c2) /
                       ((mu0 * mu0 + mu1 * mu1 + c1) * (sigma0 + sigma1 + c2));
 
-        int block_idx = block_id_y * (width/ block_size) + block_id_x;
+        int block_idx = block_id_y * ((width+block_size-1)/ block_size) + block_id_x;
         block_ssim[block_idx] = ssim;
     }
     double gpu_diffValCalSSIM(const std::unique_ptr<cpec::cpecImg>& img1, const std::unique_ptr<cpec::cpecImg>& img2, int block_size = 8) {
@@ -197,10 +194,10 @@ namespace cpecInter{
             return -1.0;
         }
 
-        int width = img1->width;
-        int height = img1->height;
+        int width = img1->width/1.01;
+        int height = img1->height/1.01;
         int img_size = width * height * sizeof(cpec::col4);
-        int block_count = ((width + block_size - 1)/ block_size) * ((height + block_size - 1)/ block_size);
+        int block_count = ((width + block_size-1)/ block_size) * ((height+ block_size-1) / block_size);
         int block_ssim_size = block_count * sizeof(double);
 
         double max_value = 255.0;
@@ -229,6 +226,8 @@ namespace cpecInter{
         double ssim_sum = 0.0;
         for (int i = 0; i < block_count; ++i) {
             ssim_sum += h_block_ssim[i];
+            //if(h_block_ssim[i]>=0)
+             //   std::cout << h_block_ssim[i] << std::endl;
         }
         ssim_sum /= block_count;
 

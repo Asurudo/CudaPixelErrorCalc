@@ -15,7 +15,7 @@
 
 **2. 本项目采用cuda v12.6构建。**
 
-
+**3. 目前gpu版本正在开发中，仅支持8k及以下图片输入。**
 
 ## 参数
 
@@ -63,7 +63,3 @@ min_value：表示数据的最小值，对应颜色映射的起点。
 max_value：表示数据的最大值，对应颜色映射的终点。
 
 数据在 min_value 和 max_value 之间线性映射到颜色条上，超出范围的数据通常会被截断或循环处理。
-
-
-
-<center><strong>Copyright © 2023 Asurudo Jyo. All rights reserved. </strong></center
